@@ -7,3 +7,5 @@ out/
 # Env (JANGAN commit secret asli)
 .env*.local
 .vercel
+
+.vercel/
