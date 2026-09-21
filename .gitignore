@@ -1,0 +1,9 @@
+# LKBB Super Admin Dashboard
+# node_modules
+node_modules/
+# Next
+.next/
+out/
+# Env (JANGAN commit secret asli)
+.env*.local
+.vercel
