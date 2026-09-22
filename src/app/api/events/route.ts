@@ -133,3 +133,41 @@ export async function PATCH(req: Request) {
   await service.from("audit_logs").insert({ user_id: auth.user.id, action: "event_update", target: id, details: updates, event_id: id } as any);
   return NextResponse.json(data);
 }
+
+// DELETE /api/events?id= — super saja. Lindungi event utama; hapus domain Vercel.
+export async function DELETE(req: Request) {
+  const auth = await requireSuperAdmin();
+  if (!auth.ok) return NextResponse.json({ error: "SUPER_ADMIN required" }, { status: auth.status });
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  const service = createServiceSupabase();
+  const { data: ev } = await service.from("events").select("id,slug,name").eq("id", id).maybeSingle();
+  if (!ev) return NextResponse.json({ error: "Event tidak ditemukan" }, { status: 404 });
+  if ((ev as any).slug === "lkbbvote") {
+    return NextResponse.json({ error: "Event utama (lkbb.my.id) tidak boleh dihapus" }, { status: 403 });
+  }
+  const { data: domains } = await service.from("event_domains").select("domain").eq("event_id", id);
+  const vercelResults: any[] = [];
+  const token = process.env.VERCEL_TOKEN;
+  const project = process.env.VERCEL_PROJECT_ID || process.env.VERCEL_PROJECT_NAME;
+  if (token && project) {
+    for (const d of (domains || []) as any[]) {
+      try {
+        const res = await fetch(`https://api.vercel.com/v9/projects/${project}/domains/${encodeURIComponent(d.domain)}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        vercelResults.push({ domain: d.domain, ok: res.ok, status: res.status });
+      } catch (e: any) {
+        vercelResults.push({ domain: d.domain, ok: false, error: e?.message || e });
+      }
+    }
+  } else {
+    for (const d of (domains || []) as any[]) vercelResults.push({ domain: d.domain, ok: false, error: "VERCEL_TOKEN belum di-set" });
+  }
+  const { error } = await service.from("events").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message, vercel: vercelResults }, { status: 500 });
+  await service.from("audit_logs").insert({ user_id: auth.user.id, action: "event_delete", target: id, details: { slug: (ev as any).slug, vercel: vercelResults } } as any);
+  return NextResponse.json({ ok: true, vercel: vercelResults });
+}

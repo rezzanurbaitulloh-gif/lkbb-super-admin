@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 const rp = (n: number) => "Rp" + Number(n || 0).toLocaleString("id-ID");
 
@@ -35,7 +36,7 @@ export default function FinancialsPage() {
       </div>
       <div className="grid gap-2">
         {data.events.map((e: any) => (
-          <div key={e.event_id} className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm">
+          <Link key={e.event_id} href={`/financials/${e.event_id}`} className="block rounded-xl border border-white/10 bg-white/5 p-4 text-sm hover:border-white/25">
             <div className="font-bold">{e.name} <span className="text-white/50">/{e.slug} • {e.status}</span></div>
             <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
               <div>Transaksi<br /><b className="tabular-nums">{e.total_transactions}</b></div>
@@ -43,7 +44,8 @@ export default function FinancialsPage() {
               <div>Terverifikasi<br /><b className="tabular-nums text-emerald-400">{rp(e.verified_revenue)}</b></div>
               <div>Pending<br /><b className="tabular-nums text-amber-400">{rp(e.pending_revenue)}</b></div>
             </div>
-          </div>
+            <div className="mt-1 text-[11px] text-white/40">Klik untuk riwayat + invoice →</div>
+          </Link>
         ))}
       </div>
     </div>

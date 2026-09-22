@@ -27,6 +27,16 @@ export default function EventsPage() {
     load();
   };
 
+  const remove = async (e: any) => {
+    if (e.slug === "lkbbvote") { setMsg("Event utama (lkbb.my.id) tidak boleh dihapus."); return; }
+    if (!confirm(`Hapus web "${e.name}" (${e.slug})?\n\nSeluruh data event + domain ikut terhapus. Tidak bisa dibatalkan.`)) return;
+    const res = await fetch(`/api/events?id=${e.id}`, { method: "DELETE" });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) { setMsg("Gagal: " + (j.error || res.status)); return; }
+    setMsg("Event dihapus.");
+    load();
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-black">Kelola Event (Sewa)</h1>
@@ -51,9 +61,16 @@ export default function EventsPage() {
       <div className="grid gap-2">
         {events.map((e: any) => (
           <div key={e.id} className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
-            <div className="font-bold">{e.name} <span className="text-white/50">/{e.slug} • {e.status}</span></div>
+            <div className="font-bold">{e.name} <span className="text-white/50">/{e.slug} • {e.status}</span> {e.slug === "lkbbvote" && <span className="ml-1 rounded-full bg-white px-2 py-0.5 text-[10px] text-black">UTAMA</span>}</div>
             <div className="text-xs text-white/60">{(e.event_domains || []).map((d: any) => d.domain).join(", ")}</div>
-            <a className="text-xs underline" target="_blank" rel="noreferrer" href={`https://${(e.event_domains || [])[0]?.domain || e.slug + ".lkbb.my.id"}/admin`}>Buka admin web →</a>
+            <div className="mt-1 flex gap-3">
+              <a className="text-xs underline" target="_blank" rel="noreferrer" href={`https://${(e.event_domains || [])[0]?.domain || e.slug + ".lkbb.my.id"}/admin`}>Buka admin web →</a>
+              {e.slug !== "lkbbvote" ? (
+                <button onClick={() => remove(e)} className="text-xs text-red-400 underline">Hapus</button>
+              ) : (
+                <span className="text-xs text-white/40" title="Event utama tidak boleh dihapus">🔒 utama</span>
+              )}
+            </div>
           </div>
         ))}
       </div>
