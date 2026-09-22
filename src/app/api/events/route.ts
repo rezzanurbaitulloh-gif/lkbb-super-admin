@@ -30,6 +30,26 @@ export async function GET() {
   return NextResponse.json(data);
 }
 
+
+// Samakan site_settings appearance milik event dengan warna template.
+async function syncAppearance(service: any, eventId: string, colors: Record<string, any>) {
+  const primary = colors?.primary;
+  if (typeof primary !== "string" || !primary) return;
+  const { data: row } = await service
+    .from("site_settings").select("id,value").eq("key", "appearance.primary_color").eq("event_id", eventId).maybeSingle();
+  const cur = (row as any)?.value;
+  const shaped = typeof cur === "string" ? primary : { value: primary };
+  if (row) {
+    await service.from("site_settings").update({ value: shaped as any, updated_at: new Date().toISOString() }).eq("id", (row as any).id);
+  } else {
+    await service.from("site_settings").insert({
+      key: "appearance.primary_color", value: primary, category: "appearance",
+      description: "Warna primer (sinkron template)", is_public: true, event_id: eventId,
+    });
+  }
+}
+
+
 export async function POST(req: Request) {
   const auth = await requireSuperAdmin();
   if (!auth.ok) return NextResponse.json({ error: "SUPER_ADMIN required" }, { status: auth.status });
@@ -102,6 +122,7 @@ export async function POST(req: Request) {
         try {
           await service.from("competitions").update({ settings: t.default_settings || {} } as any).eq("event_id", eventId);
         } catch {}
+        await syncAppearance(service, eventId, (t.theme_tokens || {})?.colors || {});
         templateState = "applied";
       } else templateState = "template tidak ditemukan";
     } catch (e: any) {

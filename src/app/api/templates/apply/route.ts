@@ -6,6 +6,25 @@ function merge(base: Record<string, any>, over: Record<string, any>) {
   return { ...(base || {}), ...(over || {}) };
 }
 
+
+// Samakan site_settings appearance milik event dengan warna template.
+async function syncAppearance(service: any, eventId: string, colors: Record<string, any>) {
+  const primary = colors?.primary;
+  if (typeof primary !== "string" || !primary) return;
+  const { data: row } = await service
+    .from("site_settings").select("id,value").eq("key", "appearance.primary_color").eq("event_id", eventId).maybeSingle();
+  const cur = (row as any)?.value;
+  const shaped = typeof cur === "string" ? primary : { value: primary };
+  if (row) {
+    await service.from("site_settings").update({ value: shaped as any, updated_at: new Date().toISOString() }).eq("id", (row as any).id);
+  } else {
+    await service.from("site_settings").insert({
+      key: "appearance.primary_color", value: primary, category: "appearance",
+      description: "Warna primer (sinkron template)", is_public: true, event_id: eventId,
+    });
+  }
+}
+
 // POST /api/templates/apply { event_id, template_id, overrides? } — 1 klik penuh
 export async function POST(req: Request) {
   const auth = await requireSuperAdmin();
@@ -36,6 +55,7 @@ export async function POST(req: Request) {
   try {
     await service.from("competitions").update({ settings: merge(t.default_settings, overrides?.default_settings) } as any).eq("event_id", event_id);
   } catch {}
+  await syncAppearance(service, event_id, merge(t.theme_tokens, overrides?.theme_tokens)?.colors || {});
   await service.from("audit_logs").insert({ user_id: auth.user.id, action: "template_apply", target: event_id, details: { template_id }, event_id } as any);
   return NextResponse.json({ ok: true });
 }
