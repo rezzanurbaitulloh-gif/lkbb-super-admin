@@ -7,6 +7,7 @@ export default function EventsPage() {
   const [form, setForm] = useState({ slug: "", name: "", organizer_name: "", event_date: "", status: "DRAFT", template_id: "", domain_mode: "myid" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [links, setLinks] = useState<{ site: string; admin: string } | null>(null);
 
   const load = async () => {
     const [er, tr] = await Promise.all([fetch("/api/events"), fetch("/api/templates")]);
@@ -21,8 +22,9 @@ export default function EventsPage() {
     const res = await fetch("/api/events", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, template_id: form.template_id || undefined }) });
     const j = await res.json().catch(() => ({}));
     setSaving(false);
-    if (!res.ok) { setMsg("Gagal: " + (j.error || res.status)); return; }
+    if (!res.ok) { setLinks(null); setMsg("Gagal: " + (j.error || res.status)); return; }
     setMsg(`OK: ${j.slug} → ${j.provisioning?.domain?.domain} (template: ${j.provisioning?.template}, vercel: ${j.provisioning?.domain?.vercel})`);
+    setLinks(j.provisioning?.siteUrl ? { site: j.provisioning.siteUrl, admin: j.provisioning.adminUrl } : null);
     setForm({ slug: "", name: "", organizer_name: "", event_date: "", status: "DRAFT", template_id: "", domain_mode: "myid" });
     load();
   };
@@ -57,6 +59,12 @@ export default function EventsPage() {
           {saving ? "Memproses..." : "Buat Event + Provisioning"}
         </button>
         {msg && <p className="sm:col-span-2 text-xs text-white/70">{msg}</p>}
+        {links && (
+          <div className="sm:col-span-2 flex flex-wrap gap-3 text-xs">
+            <a className="underline" target="_blank" rel="noreferrer" href={links.site}>Buka website event →</a>
+            <a className="underline" target="_blank" rel="noreferrer" href={links.admin}>Buka admin event →</a>
+          </div>
+        )}
       </form>
       <div className="grid gap-2">
         {events.map((e: any) => (
@@ -64,6 +72,7 @@ export default function EventsPage() {
             <div className="font-bold">{e.name} <span className="text-white/50">/{e.slug} • {e.status}</span> {e.slug === "lkbbvote" && <span className="ml-1 rounded-full bg-white px-2 py-0.5 text-[10px] text-black">UTAMA</span>}</div>
             <div className="text-xs text-white/60">{(e.event_domains || []).map((d: any) => d.domain).join(", ")}</div>
             <div className="mt-1 flex gap-3">
+              <a className="text-xs underline" target="_blank" rel="noreferrer" href={`https://${(e.event_domains || [])[0]?.domain || e.slug + ".lkbb.my.id"}`}>Buka website →</a>
               <a className="text-xs underline" target="_blank" rel="noreferrer" href={`https://${(e.event_domains || [])[0]?.domain || e.slug + ".lkbb.my.id"}/admin`}>Buka admin web →</a>
               {e.slug !== "lkbbvote" ? (
                 <button onClick={() => remove(e)} className="text-xs text-red-400 underline">Hapus</button>

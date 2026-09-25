@@ -130,8 +130,10 @@ export async function POST(req: Request) {
     }
   }
 
-  await service.from("audit_logs").insert({ user_id: auth.user.id, action: "event_create", target: eventId, details: { ...body, domain }, event_id: eventId } as any);
-  return NextResponse.json({ ...(data as object), provisioning: { domain: domainState, template: templateState } });
+  try {
+    await service.from("audit_logs").insert({ user_id: auth.user.id, action: "event_create", target: eventId, details: { ...body, domain }, event_id: eventId } as any);
+  } catch {}
+  return NextResponse.json({ ...(data as object), provisioning: { domain: domainState, template: templateState, siteUrl: `https://${domain}`, adminUrl: `https://${domain}/admin` } });
 }
 
 export async function PATCH(req: Request) {
