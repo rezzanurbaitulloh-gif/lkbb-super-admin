@@ -98,7 +98,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    await service.from("competitions").insert({ name, tagline: description, state: status || "DRAFT", event_id: eventId, settings: {} } as any);
+    // competitions.state punya check constraint — DRAFT tidak valid, petakan ke NOT_STARTED.
+    const compState = status && status !== "DRAFT" ? status : "NOT_STARTED";
+    await service.from("competitions").insert({ name, tagline: description, state: compState, event_id: eventId, settings: {} } as any);
   } catch {}
 
   let templateState = "skipped";
